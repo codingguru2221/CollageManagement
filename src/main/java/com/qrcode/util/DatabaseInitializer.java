@@ -1,126 +1,85 @@
 package com.qrcode.util;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
 
 public class DatabaseInitializer {
     
-    private static final String DB_URL = "jdbc:mysql://localhost:3306/";
-    private static final String DB_NAME = "college_management";
-    private static final String USERNAME = "root";
-    private static final String PASSWORD = "Codex@123";
-    
     /**
      * Initialize the database and tables
-     * Creates database and tables if they don't exist
      */
     public static void initializeDatabase() {
-        try {
-            // First, try to connect to the database
-            if (!databaseExists()) {
-                System.out.println("Database does not exist. Creating database and tables...");
-                createDatabaseAndTables();
-                System.out.println("Database and tables created successfully!");
-            } else {
-                System.out.println("Database already exists. Checking tables...");
-                // Check if tables exist, if not create them
-                if (!tablesExist()) {
-                    System.out.println("Tables do not exist. Creating tables...");
-                    createTables();
-                    System.out.println("Tables created successfully!");
-                } else {
-                    System.out.println("Database and tables already exist.");
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("Error initializing database: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-    
-    /**
-     * Check if the database exists
-     */
-    private static boolean databaseExists() {
-        try (Connection connection = DriverManager.getConnection(DB_URL, USERNAME, PASSWORD)) {
-            Statement statement = connection.createStatement();
-            statement.execute("USE " + DB_NAME);
-            return true;
-        } catch (SQLException e) {
-            return false;
-        }
-    }
-    
-    /**
-     * Check if the required tables exist
-     */
-    private static boolean tablesExist() {
-        try (Connection connection = DriverManager.getConnection(DB_URL + DB_NAME, USERNAME, PASSWORD)) {
-            Statement statement = connection.createStatement();
-            // Try to query the users table as a test
-            statement.executeQuery("SELECT 1 FROM users LIMIT 1");
-            return true;
-        } catch (SQLException e) {
-            return false;
-        }
-    }
-    
-    /**
-     * Create the database and all tables
-     */
-    private static void createDatabaseAndTables() throws SQLException, IOException {
-        // Create database
-        try (Connection connection = DriverManager.getConnection(DB_URL, USERNAME, PASSWORD)) {
-            Statement statement = connection.createStatement();
-            statement.executeUpdate("CREATE DATABASE IF NOT EXISTS " + DB_NAME);
-        }
+        Connection connection = null;
+        Statement statement = null;
         
-        // Create tables
-        createTables();
-    }
-    
-    /**
-     * Create all tables from the schema file
-     */
-    private static void createTables() throws SQLException, IOException {
-        try (Connection connection = DriverManager.getConnection(DB_URL + DB_NAME, USERNAME, PASSWORD)) {
-            // Read the schema file
-            StringBuilder sqlBuilder = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(new FileReader("database_schema.sql"))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    // Skip comments and empty lines
-                    if (!line.trim().isEmpty() && !line.trim().startsWith("--") && !line.trim().startsWith("/*")) {
-                        sqlBuilder.append(line).append("\n");
-                    }
-                }
-            }
+        try {
+            connection = DatabaseConnection.getConnection();
+            statement = connection.createStatement();
             
-            // Split by semicolon to get individual statements
-            String[] statements = sqlBuilder.toString().split(";");
+            // Read and execute the database schema
+            String schema = new String(Files.readAllBytes(Paths.get("database_schema.sql")), StandardCharsets.UTF_8);
+            String[] queries = schema.split(";");
             
-            Statement statement = connection.createStatement();
-            for (String sql : statements) {
-                String trimmedSql = sql.trim();
-                if (!trimmedSql.isEmpty() && !trimmedSql.startsWith("--") && !trimmedSql.startsWith("/*") 
-                    && !trimmedSql.startsWith("CREATE DATABASE")) {
+            for (String query : queries) {
+                query = query.trim();
+                if (!query.isEmpty() && !query.startsWith("--")) {
                     try {
-                        statement.executeUpdate(trimmedSql);
+                        statement.executeUpdate(query);
                     } catch (SQLException e) {
-                        // Ignore errors for statements like "USE database" or duplicate entries
-                        if (!e.getMessage().contains("Unknown database") && 
-                            !e.getMessage().contains("already exists") &&
-                            !e.getMessage().contains("Duplicate")) {
-                            System.err.println("SQL Error executing: " + trimmedSql);
-                            System.err.println("Error: " + e.getMessage());
+                        // Ignore errors for existing tables
+                        if (!e.getMessage().contains("already exists") && 
+                            !e.getMessage().contains("Duplicate column name") &&
+                            !e.getMessage().contains("Duplicate key name")) {
+                            System.err.println("Error executing query: " + query);
+                            System.err.println("Error message: " + e.getMessage());
                         }
                     }
                 }
+            }
+            
+            // Also try to add the qr_code column if it doesn't exist
+            try {
+                statement.executeUpdate("ALTER TABLE students ADD qr_code VARCHAR(255)");
+                System.out.println("Added qr_code column to students table");
+            } catch (SQLException e) {
+                // Column might already exist, which is fine
+                if (!e.getMessage().contains("Duplicate column name")) {
+                    System.err.println("Error adding qr_code column: " + e.getMessage());
+                }
+            }
+            
+            // Also try to create the attendance table if it doesn't exist
+            try {
+                String createAttendanceTable = "CREATE TABLE IF NOT EXISTS attendance (" +
+                    "attendance_id INT AUTO_INCREMENT PRIMARY KEY, " +
+                    "student_id INT, " +
+                    "course_id INT, " +
+                    "date DATE, " +
+                    "status ENUM('present', 'absent', 'late') DEFAULT 'present', " +
+                    "qr_code_used VARCHAR(255), " +
+                    "timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                    "FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE, " +
+                    "FOREIGN KEY (course_id) REFERENCES courses(course_id) ON DELETE CASCADE)";
+                statement.executeUpdate(createAttendanceTable);
+                System.out.println("Attendance table created or already exists");
+            } catch (SQLException e) {
+                System.err.println("Error creating attendance table: " + e.getMessage());
+            }
+            
+            System.out.println("Database and tables already exist.");
+        } catch (Exception e) {
+            System.err.println("Error initializing database: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            try {
+                if (statement != null) statement.close();
+                if (connection != null) connection.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
             }
         }
     }

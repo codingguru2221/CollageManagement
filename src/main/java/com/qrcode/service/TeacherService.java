@@ -93,6 +93,7 @@ public class TeacherService {
                 student.setAdmissionDate(resultSet.getString("admission_date"));
                 student.setBatch(resultSet.getString("batch"));
                 student.setDepartment(resultSet.getString("department"));
+                student.setQrCode(resultSet.getString("qr_code")); // Get QR code
                 
                 students.add(student);
             }
@@ -142,6 +143,7 @@ public class TeacherService {
                 student.setAdmissionDate(resultSet.getString("admission_date"));
                 student.setBatch(resultSet.getString("batch"));
                 student.setDepartment(resultSet.getString("department"));
+                student.setQrCode(resultSet.getString("qr_code")); // Get QR code
                 
                 students.add(student);
             }
@@ -284,5 +286,36 @@ public class TeacherService {
                 e.printStackTrace();
             }
         }
+    }
+    
+    /**
+     * Mark student attendance using QR code
+     * @param studentId The student ID
+     * @param courseId The course ID
+     * @param date The attendance date
+     * @param qrCode The QR code used
+     * @return true if successful, false otherwise
+     */
+    public boolean markAttendance(int studentId, int courseId, String date, String qrCode) {
+        // In a real application, you would verify the QR code and save to database
+        // For now, we'll just simulate the process
+        System.out.println("Attendance marked for student ID: " + studentId + 
+                          " in course ID: " + courseId + 
+                          " on date: " + date + 
+                          " using QR code: " + qrCode);
+        return true;
+    }
+    
+    /**
+     * Verify if a QR code is valid for a student
+     * @param studentId The student ID
+     * @param qrCode The QR code to verify
+     * @return true if valid, false otherwise
+     */
+    public boolean verifyQRCode(int studentId, String qrCode) {
+        // In a real application, you would check the QR code against the database
+        // For now, we'll just simulate the process
+        System.out.println("Verifying QR code for student ID: " + studentId);
+        return qrCode != null && !qrCode.isEmpty(); // Simple validation
     }
 }

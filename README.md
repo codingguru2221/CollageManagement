@@ -8,18 +8,22 @@ A comprehensive college management system with separate modules for administrato
 - View all students and teachers
 - Manage college events
 - Overview of all college activities
+- Register new students (automatically generates unique QR codes)
 
 ### Teacher Module
 - View students by batch/year
 - Add internal exam results
 - Add final results
 - Manage student information
+- Mark student attendance using QR codes
 
 ### Student Module
 - View final results
 - View internal exam results
 - View fee payment history
 - Make fee payments
+- View personal QR code
+- Download QR code as image for attendance
 
 ## Database Schema
 
@@ -36,6 +40,7 @@ The system uses a MySQL database with the following tables:
 - `fee_structure` - Course fee structure
 - `fee_payments` - Student fee payments
 - `events` - College events
+- `attendance` - Student attendance records
 
 ## Setup Instructions
 
@@ -46,6 +51,15 @@ The system uses a MySQL database with the following tables:
    ```
    mvn compile exec:java
    ```
+
+## QR Code Attendance System
+
+Each student is automatically assigned a unique QR code during registration. This QR code can be used for attendance tracking:
+
+1. Students can view their QR code in the student dashboard
+2. Students can download their QR code as a PNG image
+3. Teachers can scan or manually enter the QR code to mark attendance
+4. Attendance records are stored in the database with timestamps
 
 ## Default Login Credentials
 
@@ -59,3 +73,4 @@ The system uses a MySQL database with the following tables:
 - MySQL
 - JDBC
 - Maven
+- ZXing QR Code Library

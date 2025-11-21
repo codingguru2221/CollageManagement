@@ -48,6 +48,7 @@ CREATE TABLE students (
     admission_date DATE,
     batch VARCHAR(20),
     department VARCHAR(100),
+    qr_code VARCHAR(255),
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
@@ -157,6 +158,19 @@ CREATE TABLE events (
     organizer VARCHAR(100),
     created_by INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Attendance table
+CREATE TABLE attendance (
+    attendance_id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id INT,
+    course_id INT,
+    date DATE,
+    status ENUM('present', 'absent', 'late') DEFAULT 'present',
+    qr_code_used VARCHAR(255),
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE,
+    FOREIGN KEY (course_id) REFERENCES courses(course_id) ON DELETE CASCADE
 );
 
 -- Insert sample admin user

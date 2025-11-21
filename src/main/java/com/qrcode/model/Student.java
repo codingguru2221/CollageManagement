@@ -12,12 +12,13 @@ public class Student {
     private String admissionDate;
     private String batch;
     private String department;
+    private String qrCode; // New field for QR code
     
     // Constructors
     public Student() {}
     
     public Student(int studentId, int userId, String rollNumber, String name, String email, String phone, 
-                   String address, String dateOfBirth, String admissionDate, String batch, String department) {
+                   String address, String dateOfBirth, String admissionDate, String batch, String department, String qrCode) {
         this.studentId = studentId;
         this.userId = userId;
         this.rollNumber = rollNumber;
@@ -29,6 +30,7 @@ public class Student {
         this.admissionDate = admissionDate;
         this.batch = batch;
         this.department = department;
+        this.qrCode = qrCode;
     }
     
     // Getters and Setters
@@ -120,6 +122,15 @@ public class Student {
         this.department = department;
     }
     
+    // Getter and setter for QR code
+    public String getQrCode() {
+        return qrCode;
+    }
+    
+    public void setQrCode(String qrCode) {
+        this.qrCode = qrCode;
+    }
+    
     @Override
     public String toString() {
         return "Student{" +
@@ -134,6 +145,7 @@ public class Student {
                 ", admissionDate='" + admissionDate + '\'' +
                 ", batch='" + batch + '\'' +
                 ", department='" + department + '\'' +
+                ", qrCode='" + qrCode + '\'' +
                 '}';
     }
 }

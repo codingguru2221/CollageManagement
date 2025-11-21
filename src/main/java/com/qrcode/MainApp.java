@@ -250,7 +250,8 @@ public class MainApp {
             System.out.println("2. View students by batch");
             System.out.println("3. Add internal result");
             System.out.println("4. Add final result");
-            System.out.println("5. Logout");
+            System.out.println("5. Mark Attendance");
+            System.out.println("6. Logout");
             System.out.print("Choose an option: ");
             
             int choice = scanner.nextInt();
@@ -335,6 +336,30 @@ public class MainApp {
                     System.out.println("Final result added successfully!");
                     break;
                 case 5:
+                    // Mark Attendance
+                    System.out.println("\n--- Mark Attendance ---");
+                    System.out.print("Student ID: ");
+                    int studId = scanner.nextInt();
+                    System.out.print("Course ID: ");
+                    int courseID = scanner.nextInt();
+                    scanner.nextLine(); // Consume newline
+                    System.out.print("Date (YYYY-MM-DD): ");
+                    String date = scanner.nextLine();
+                    System.out.print("Enter QR Code: ");
+                    String qrCode = scanner.nextLine();
+                    
+                    // Verify QR code and mark attendance
+                    if (teacherService.verifyQRCode(studId, qrCode)) {
+                        if (teacherService.markAttendance(studId, courseID, date, qrCode)) {
+                            System.out.println("Attendance marked successfully!");
+                        } else {
+                            System.out.println("Failed to mark attendance. Please try again.");
+                        }
+                    } else {
+                        System.out.println("Invalid QR code. Attendance not marked.");
+                    }
+                    break;
+                case 6:
                     System.out.println("Logging out...");
                     return;
                 default:
@@ -355,7 +380,9 @@ public class MainApp {
             System.out.println("2. View internal results");
             System.out.println("3. View fee payment history");
             System.out.println("4. Pay fees");
-            System.out.println("5. Logout");
+            System.out.println("5. View QR Code");
+            System.out.println("6. Download QR Code");
+            System.out.println("7. Logout");
             System.out.print("Choose an option: ");
             
             int choice = scanner.nextInt();
@@ -422,6 +449,34 @@ public class MainApp {
                     }
                     break;
                 case 5:
+                    // View QR Code
+                    System.out.println("\n--- Your QR Code ---");
+                    if (student != null && student.getQrCode() != null) {
+                        System.out.println("Your unique QR code identifier:");
+                        System.out.println(student.getQrCode());
+                        System.out.println("\nThis QR code can be used to mark your attendance.");
+                    } else {
+                        System.out.println("QR code not available. Please contact administrator.");
+                    }
+                    break;
+                case 6:
+                    // Download QR Code
+                    System.out.println("\n--- Download QR Code ---");
+                    if (student != null) {
+                        try {
+                            String outputPath = "qr_codes"; // Directory to save QR codes
+                            String filePath = studentService.generateAndSaveStudentQRCode(student.getStudentId(), outputPath);
+                            System.out.println("QR code saved successfully to: " + filePath);
+                            System.out.println("You can find the QR code image in the '" + outputPath + "' directory.");
+                        } catch (Exception e) {
+                            System.err.println("Error generating QR code: " + e.getMessage());
+                            System.out.println("Failed to generate QR code. Please try again.");
+                        }
+                    } else {
+                        System.out.println("Student information not available.");
+                    }
+                    break;
+                case 7:
                     System.out.println("Logging out...");
                     return;
                 default:

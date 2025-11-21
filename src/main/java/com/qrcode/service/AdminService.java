@@ -90,6 +90,7 @@ public class AdminService {
                 student.setAdmissionDate(resultSet.getString("admission_date"));
                 student.setBatch(resultSet.getString("batch"));
                 student.setDepartment(resultSet.getString("department"));
+                student.setQrCode(resultSet.getString("qr_code")); // Get QR code
                 
                 students.add(student);
             }
@@ -245,78 +246,9 @@ public class AdminService {
      * @return true if successful, false otherwise
      */
     public boolean addStudent(Student student, User user) {
-        Connection connection = null;
-        PreparedStatement preparedStatement = null;
-        PreparedStatement userStatement = null;
-        
-        try {
-            connection = DatabaseConnection.getConnection();
-            connection.setAutoCommit(false);
-            
-            // First, create user account
-            String userQuery = "INSERT INTO users (username, password, role) VALUES (?, ?, ?)";
-            userStatement = connection.prepareStatement(userQuery, PreparedStatement.RETURN_GENERATED_KEYS);
-            userStatement.setString(1, user.getUsername());
-            userStatement.setString(2, user.getPassword());
-            userStatement.setString(3, user.getRole());
-            
-            int userRowsAffected = userStatement.executeUpdate();
-            
-            if (userRowsAffected > 0) {
-                // Get generated user ID
-                ResultSet userResultSet = userStatement.getGeneratedKeys();
-                int userId = 0;
-                if (userResultSet.next()) {
-                    userId = userResultSet.getInt(1);
-                }
-                
-                // Then, create student record
-                String studentQuery = "INSERT INTO students (user_id, roll_number, name, email, phone, address, date_of_birth, admission_date, batch, department) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                preparedStatement = connection.prepareStatement(studentQuery);
-                preparedStatement.setInt(1, userId);
-                preparedStatement.setString(2, student.getRollNumber());
-                preparedStatement.setString(3, student.getName());
-                preparedStatement.setString(4, student.getEmail());
-                preparedStatement.setString(5, student.getPhone());
-                preparedStatement.setString(6, student.getAddress());
-                preparedStatement.setString(7, student.getDateOfBirth());
-                preparedStatement.setString(8, student.getAdmissionDate());
-                preparedStatement.setString(9, student.getBatch());
-                preparedStatement.setString(10, student.getDepartment());
-                
-                int studentRowsAffected = preparedStatement.executeUpdate();
-                
-                if (studentRowsAffected > 0) {
-                    connection.commit();
-                    return true;
-                }
-            }
-            
-            connection.rollback();
-            return false;
-        } catch (SQLException e) {
-            System.err.println("Error adding student: " + e.getMessage());
-            e.printStackTrace();
-            try {
-                if (connection != null) {
-                    connection.rollback();
-                }
-            } catch (SQLException rollbackEx) {
-                rollbackEx.printStackTrace();
-            }
-            return false;
-        } finally {
-            // Close resources
-            try {
-                if (preparedStatement != null) preparedStatement.close();
-                if (userStatement != null) userStatement.close();
-                if (connection != null) {
-                    connection.setAutoCommit(true);
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        }
+        // Use the new registerStudent method from StudentService which generates QR codes
+        StudentService studentService = new StudentService();
+        return studentService.registerStudent(student);
     }
     
     /**

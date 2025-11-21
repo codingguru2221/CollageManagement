@@ -5,15 +5,93 @@ import com.qrcode.model.FinalResult;
 import com.qrcode.model.InternalResult;
 import com.qrcode.model.FeePayment;
 import com.qrcode.util.DatabaseConnection;
+import com.qrcode.util.QRCodeUtil;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.io.IOException;
 
 public class StudentService {
+    
+    /**
+     * Register a new student and generate a unique QR code
+     * @param student The student to register
+     * @return true if successful, false otherwise
+     */
+    public boolean registerStudent(Student student) {
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet generatedKeys = null;
+        
+        try {
+            connection = DatabaseConnection.getConnection();
+            connection.setAutoCommit(false); // Start transaction
+            
+            // First, insert the user record
+            String userQuery = "INSERT INTO users (username, password, role) VALUES (?, ?, 'student')";
+            preparedStatement = connection.prepareStatement(userQuery, Statement.RETURN_GENERATED_KEYS);
+            preparedStatement.setString(1, student.getEmail()); // Using email as username
+            preparedStatement.setString(2, "student123"); // Default password, should be changed later
+            preparedStatement.executeUpdate();
+            
+            generatedKeys = preparedStatement.getGeneratedKeys();
+            int userId = 0;
+            if (generatedKeys.next()) {
+                userId = generatedKeys.getInt(1);
+            } else {
+                throw new SQLException("Creating user failed, no ID obtained.");
+            }
+            
+            // Generate unique QR code for the student
+            String qrCodeText = QRCodeUtil.generateUniqueQRCodeString(userId, student.getRollNumber());
+            
+            // Save the QR code to the database
+            String studentQuery = "INSERT INTO students (user_id, roll_number, name, email, phone, address, " +
+                                  "date_of_birth, admission_date, batch, department, qr_code) " +
+                                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            preparedStatement = connection.prepareStatement(studentQuery);
+            preparedStatement.setInt(1, userId);
+            preparedStatement.setString(2, student.getRollNumber());
+            preparedStatement.setString(3, student.getName());
+            preparedStatement.setString(4, student.getEmail());
+            preparedStatement.setString(5, student.getPhone());
+            preparedStatement.setString(6, student.getAddress());
+            preparedStatement.setString(7, student.getDateOfBirth());
+            preparedStatement.setString(8, student.getAdmissionDate());
+            preparedStatement.setString(9, student.getBatch());
+            preparedStatement.setString(10, student.getDepartment());
+            preparedStatement.setString(11, qrCodeText); // Save QR code text
+            preparedStatement.executeUpdate();
+            
+            connection.commit(); // Commit transaction
+            return true;
+        } catch (SQLException e) {
+            System.err.println("Error registering student: " + e.getMessage());
+            e.printStackTrace();
+            if (connection != null) {
+                try {
+                    connection.rollback(); // Rollback transaction on error
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                }
+            }
+            return false;
+        } finally {
+            // Close resources
+            try {
+                if (generatedKeys != null) generatedKeys.close();
+                if (preparedStatement != null) preparedStatement.close();
+                if (connection != null) connection.setAutoCommit(true); // Reset auto-commit
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
     
     /**
      * Get student details by user ID
@@ -47,6 +125,7 @@ public class StudentService {
                 student.setAdmissionDate(resultSet.getString("admission_date"));
                 student.setBatch(resultSet.getString("batch"));
                 student.setDepartment(resultSet.getString("department"));
+                student.setQrCode(resultSet.getString("qr_code")); // Get QR code
             }
         } catch (SQLException e) {
             System.err.println("Error fetching student details: " + e.getMessage());
@@ -62,6 +141,78 @@ public class StudentService {
         }
         
         return student;
+    }
+    
+    /**
+     * Get student by student ID
+     * @param studentId
+     * @return Student object
+     */
+    public Student getStudentById(int studentId) {
+        Student student = null;
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        
+        try {
+            connection = DatabaseConnection.getConnection();
+            String query = "SELECT * FROM students WHERE student_id = ?";
+            preparedStatement = connection.prepareStatement(query);
+            preparedStatement.setInt(1, studentId);
+            
+            resultSet = preparedStatement.executeQuery();
+            
+            if (resultSet.next()) {
+                student = new Student();
+                student.setStudentId(resultSet.getInt("student_id"));
+                student.setUserId(resultSet.getInt("user_id"));
+                student.setRollNumber(resultSet.getString("roll_number"));
+                student.setName(resultSet.getString("name"));
+                student.setEmail(resultSet.getString("email"));
+                student.setPhone(resultSet.getString("phone"));
+                student.setAddress(resultSet.getString("address"));
+                student.setDateOfBirth(resultSet.getString("date_of_birth"));
+                student.setAdmissionDate(resultSet.getString("admission_date"));
+                student.setBatch(resultSet.getString("batch"));
+                student.setDepartment(resultSet.getString("department"));
+                student.setQrCode(resultSet.getString("qr_code")); // Get QR code
+            }
+        } catch (SQLException e) {
+            System.err.println("Error fetching student details: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            // Close resources
+            try {
+                if (resultSet != null) resultSet.close();
+                if (preparedStatement != null) preparedStatement.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        
+        return student;
+    }
+    
+    /**
+     * Generate and save QR code image for a student
+     * @param studentId The student ID
+     * @param outputPath The directory where to save the QR code image
+     * @return The file path of the saved QR code image
+     */
+    public String generateAndSaveStudentQRCode(int studentId, String outputPath) {
+        try {
+            Student student = getStudentById(studentId);
+            if (student == null) {
+                throw new IllegalArgumentException("Student not found with ID: " + studentId);
+            }
+            
+            // Generate and save QR code image
+            return QRCodeUtil.generateAndSaveStudentQRCode(studentId, student.getRollNumber(), outputPath);
+        } catch (Exception e) {
+            System.err.println("Error generating QR code: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
     }
     
     /**
