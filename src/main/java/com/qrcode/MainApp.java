@@ -25,8 +25,10 @@ public class MainApp {
         System.out.println("=========================================");
         
         while (true) {
-            System.out.println("\n1. Login");
-            System.out.println("2. Exit");
+            System.out.println("\n1. Login as Admin");
+            System.out.println("2. Login as Teacher");
+            System.out.println("3. Login as Student");
+            System.out.println("4. Exit");
             System.out.print("Choose an option: ");
             
             int choice = scanner.nextInt();
@@ -34,9 +36,15 @@ public class MainApp {
             
             switch (choice) {
                 case 1:
-                    login();
+                    login("admin");
                     break;
                 case 2:
+                    login("teacher");
+                    break;
+                case 3:
+                    login("student");
+                    break;
+                case 4:
                     System.out.println("Thank you for using College Management System!");
                     System.exit(0);
                     break;
@@ -46,16 +54,17 @@ public class MainApp {
         }
     }
     
-    private static void login() {
-        System.out.print("Enter username: ");
+    private static void login(String role) {
+        System.out.print("Enter " + role + " username: ");
         String username = scanner.nextLine();
         
-        System.out.print("Enter password: ");
+        System.out.print("Enter " + role + " password: ");
         String password = scanner.nextLine();
         
+        // Authenticate user
         User user = authService.authenticateUser(username, password);
         
-        if (user != null) {
+        if (user != null && user.getRole().equals(role)) {
             System.out.println("Login successful! Welcome, " + user.getUsername());
             
             switch (user.getRole()) {

@@ -4,6 +4,7 @@ import com.qrcode.model.Admin;
 import com.qrcode.model.Student;
 import com.qrcode.model.Teacher;
 import com.qrcode.model.Event;
+import com.qrcode.model.User;
 import com.qrcode.util.DatabaseConnection;
 import java.sql.ResultSet;
 
@@ -13,7 +14,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import com.qrcode.model.User;
 
 public class AdminService {
     
@@ -248,7 +248,7 @@ public class AdminService {
     public boolean addStudent(Student student, User user) {
         // Use the new registerStudent method from StudentService which generates QR codes
         StudentService studentService = new StudentService();
-        return studentService.registerStudent(student);
+        return studentService.registerStudent(student, user.getUsername());
     }
     
     /**
