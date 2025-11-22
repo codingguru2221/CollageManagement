@@ -9,8 +9,12 @@ import com.qrcode.model.Admin;
 import com.qrcode.model.Teacher;
 import com.qrcode.model.Student;
 import com.qrcode.util.DatabaseInitializer;
+import com.google.zxing.NotFoundException;
+import com.google.zxing.ChecksumException;
+import com.google.zxing.FormatException;
 
 import java.util.Scanner;
+import java.util.List;
 
 public class MainApp {
     private static Scanner scanner = new Scanner(System.in);
@@ -360,25 +364,64 @@ public class MainApp {
                 case 5:
                     // Mark Attendance
                     System.out.println("\n--- Mark Attendance ---");
-                    System.out.print("Student ID: ");
-                    int studId = scanner.nextInt();
-                    System.out.print("Course ID: ");
+                    
+                    // Get all students and display them
+                    List<Student> students = teacherService.getAllStudents();
+                    if (students.isEmpty()) {
+                        System.out.println("No students found.");
+                        break;
+                    }
+                    
+                    System.out.println("Select a student:");
+                    for (int i = 0; i < students.size(); i++) {
+                        Student student = students.get(i);
+                        System.out.println((i + 1) + ". " + student.getName() + " (ID: " + student.getStudentId() + ", Roll: " + student.getRollNumber() + ")");
+                    }
+                    
+                    System.out.print("Enter student number: ");
+                    int studentChoice = scanner.nextInt();
+                    scanner.nextLine(); // Consume newline
+                    
+                    if (studentChoice < 1 || studentChoice > students.size()) {
+                        System.out.println("Invalid student selection.");
+                        break;
+                    }
+                    
+                    Student selectedStudent = students.get(studentChoice - 1);
+                    int studId = selectedStudent.getStudentId();
+                    
+                    // Get course ID (for simplicity, we'll use a default course ID)
+                    // In a real application, you would have a way to select the course
+                    System.out.print("Enter Course ID: ");
                     int courseID = scanner.nextInt();
                     scanner.nextLine(); // Consume newline
-                    System.out.print("Date (YYYY-MM-DD): ");
-                    String date = scanner.nextLine();
-                    System.out.print("Enter QR Code: ");
-                    String qrCode = scanner.nextLine();
                     
-                    // Verify QR code and mark attendance
-                    if (teacherService.verifyQRCode(studId, qrCode)) {
-                        if (teacherService.markAttendance(studId, courseID, date, qrCode)) {
-                            System.out.println("Attendance marked successfully!");
+                    // Get current date automatically
+                    String date = java.time.LocalDate.now().toString();
+                    System.out.println("Date (auto-generated): " + date);
+                    
+                    // Scan QR code
+                    System.out.print("Enter path to QR code image file: ");
+                    String qrCodeImagePath = scanner.nextLine();
+                    
+                    try {
+                        // Scan the QR code image
+                        String scannedQRCode = com.qrcode.util.QRCodeScanner.scanQRCode(qrCodeImagePath);
+                        System.out.println("Scanned QR Code: " + scannedQRCode);
+                        
+                        // Verify QR code and mark attendance
+                        if (teacherService.verifyQRCode(studId, scannedQRCode)) {
+                            if (teacherService.markAttendance(studId, courseID, date, scannedQRCode)) {
+                                System.out.println("Attendance marked successfully for " + selectedStudent.getName() + "!");
+                            } else {
+                                System.out.println("Failed to mark attendance. Please try again.");
+                            }
                         } else {
-                            System.out.println("Failed to mark attendance. Please try again.");
+                            System.out.println("Invalid QR code. Attendance not marked.");
                         }
-                    } else {
-                        System.out.println("Invalid QR code. Attendance not marked.");
+                    } catch (Exception e) {
+                        System.err.println("Error scanning QR code: " + e.getMessage());
+                        System.out.println("Failed to scan QR code. Please try again.");
                     }
                     break;
                 case 6:
