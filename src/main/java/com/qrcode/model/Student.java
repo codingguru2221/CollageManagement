@@ -133,19 +133,6 @@ public class Student {
     
     @Override
     public String toString() {
-        return "Student{" +
-                "studentId=" + studentId +
-                ", userId=" + userId +
-                ", rollNumber='" + rollNumber + '\'' +
-                ", name='" + name + '\'' +
-                ", email='" + email + '\'' +
-                ", phone='" + phone + '\'' +
-                ", address='" + address + '\'' +
-                ", dateOfBirth='" + dateOfBirth + '\'' +
-                ", admissionDate='" + admissionDate + '\'' +
-                ", batch='" + batch + '\'' +
-                ", department='" + department + '\'' +
-                ", qrCode='" + qrCode + '\'' +
-                '}';
+        return name + " (ID: " + studentId + ", Roll: " + rollNumber + ")";
     }
 }

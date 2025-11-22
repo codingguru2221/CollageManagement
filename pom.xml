@@ -12,6 +12,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <javafx.version>17.0.2</javafx.version>
   </properties>
 
   <dependencies>
@@ -43,6 +44,17 @@
       <artifactId>webcam-capture</artifactId>
       <version>0.3.12</version>
     </dependency>
+    <!-- JavaFX Dependencies -->
+    <dependency>
+      <groupId>org.openjfx</groupId>
+      <artifactId>javafx-controls</artifactId>
+      <version>${javafx.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.openjfx</groupId>
+      <artifactId>javafx-fxml</artifactId>
+      <version>${javafx.version}</version>
+    </dependency>
   </dependencies>
   
   <build>
@@ -53,6 +65,15 @@
         <version>3.1.0</version>
         <configuration>
           <mainClass>com.qrcode.MainApp</mainClass>
+        </configuration>
+      </plugin>
+      <!-- JavaFX Maven Plugin -->
+      <plugin>
+        <groupId>org.openjfx</groupId>
+        <artifactId>javafx-maven-plugin</artifactId>
+        <version>0.0.8</version>
+        <configuration>
+          <mainClass>com.qrcode.javafx.MainGUI</mainClass>
         </configuration>
       </plugin>
     </plugins>
