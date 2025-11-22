@@ -248,7 +248,7 @@ public class AdminService {
     public boolean addStudent(Student student, User user) {
         // Use the new registerStudent method from StudentService which generates QR codes
         StudentService studentService = new StudentService();
-        return studentService.registerStudent(student, user.getUsername());
+        return studentService.registerStudent(student, user.getUsername(), user.getPassword());
     }
     
     /**

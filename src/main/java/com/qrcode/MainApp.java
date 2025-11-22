@@ -55,14 +55,27 @@ public class MainApp {
     }
     
     private static void login(String role) {
-        System.out.print("Enter " + role + " username: ");
-        String username = scanner.nextLine();
+        User user = null;
         
-        System.out.print("Enter " + role + " password: ");
-        String password = scanner.nextLine();
-        
-        // Authenticate user
-        User user = authService.authenticateUser(username, password);
+        if ("student".equals(role)) {
+            System.out.print("Enter student roll number: ");
+            String rollNumber = scanner.nextLine();
+            
+            System.out.print("Enter student password: ");
+            String password = scanner.nextLine();
+            
+            // Authenticate student by roll number
+            user = authService.authenticateStudent(rollNumber, password);
+        } else {
+            System.out.print("Enter " + role + " username: ");
+            String username = scanner.nextLine();
+            
+            System.out.print("Enter " + role + " password: ");
+            String password = scanner.nextLine();
+            
+            // Authenticate user
+            user = authService.authenticateUser(username, password);
+        }
         
         if (user != null && user.getRole().equals(role)) {
             System.out.println("Login successful! Welcome, " + user.getUsername());

@@ -22,9 +22,10 @@ public class StudentService {
      * Register a new student and generate a unique QR code
      * @param student The student to register
      * @param username The username for the student account
+     * @param password The password for the student account
      * @return true if successful, false otherwise
      */
-    public boolean registerStudent(Student student, String username) {
+    public boolean registerStudent(Student student, String username, String password) {
         Connection connection = null;
         PreparedStatement preparedStatement = null;
         ResultSet generatedKeys = null;
@@ -37,7 +38,7 @@ public class StudentService {
             String userQuery = "INSERT INTO users (username, password, role) VALUES (?, ?, 'student')";
             preparedStatement = connection.prepareStatement(userQuery, Statement.RETURN_GENERATED_KEYS);
             preparedStatement.setString(1, username); // Use provided username
-            preparedStatement.setString(2, "student123"); // Default password, should be changed later
+            preparedStatement.setString(2, password); // Use provided password
             preparedStatement.executeUpdate();
             
             generatedKeys = preparedStatement.getGeneratedKeys();
@@ -100,7 +101,7 @@ public class StudentService {
      * @return true if successful, false otherwise
      */
     public boolean registerStudent(Student student) {
-        return registerStudent(student, student.getEmail());
+        return registerStudent(student, student.getEmail(), "student123");
     }
     
     /**

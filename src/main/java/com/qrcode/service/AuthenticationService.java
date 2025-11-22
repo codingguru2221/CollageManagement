@@ -54,4 +54,52 @@ public class AuthenticationService {
         
         return user;
     }
+    
+    /**
+     * Authenticate student with roll number and password
+     * @param rollNumber
+     * @param password
+     * @return User object if authentication is successful, null otherwise
+     */
+    public User authenticateStudent(String rollNumber, String password) {
+        User user = null;
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        
+        try {
+            connection = DatabaseConnection.getConnection();
+            // Join users and students tables to authenticate student by roll number
+            String query = "SELECT u.user_id, u.username, u.password, u.role " +
+                         "FROM users u JOIN students s ON u.user_id = s.user_id " +
+                         "WHERE s.roll_number = ? AND u.password = ?";
+            preparedStatement = connection.prepareStatement(query);
+            preparedStatement.setString(1, rollNumber);
+            preparedStatement.setString(2, password);
+            
+            resultSet = preparedStatement.executeQuery();
+            
+            if (resultSet.next()) {
+                user = new User();
+                user.setUserId(resultSet.getInt("user_id"));
+                user.setUsername(resultSet.getString("username"));
+                user.setPassword(resultSet.getString("password"));
+                user.setRole(resultSet.getString("role"));
+            }
+        } catch (SQLException e) {
+            System.err.println("Error during student authentication: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            // Close resources
+            try {
+                if (resultSet != null) resultSet.close();
+                if (preparedStatement != null) preparedStatement.close();
+                // Don't close connection here as it's managed by DatabaseConnection class
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        
+        return user;
+    }
 }
