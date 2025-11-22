@@ -9,12 +9,16 @@ import com.qrcode.model.Admin;
 import com.qrcode.model.Teacher;
 import com.qrcode.model.Student;
 import com.qrcode.util.DatabaseInitializer;
+import com.qrcode.util.DatabaseConnection;
 import com.google.zxing.NotFoundException;
 import com.google.zxing.ChecksumException;
 import com.google.zxing.FormatException;
 
 import java.util.Scanner;
 import java.util.List;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 
 public class MainApp {
     private static Scanner scanner = new Scanner(System.in);
@@ -23,6 +27,9 @@ public class MainApp {
     public static void main(String[] args) {
         // Initialize database and tables
         DatabaseInitializer.initializeDatabase();
+        
+        // Add sample courses if they don't exist
+        addSampleCoursesIfNotExists();
         
         System.out.println("=========================================");
         System.out.println("    College Management System");
@@ -277,7 +284,8 @@ public class MainApp {
             System.out.println("3. Add internal result");
             System.out.println("4. Add final result");
             System.out.println("5. Mark Attendance");
-            System.out.println("6. Logout");
+            System.out.println("6. View Available Courses"); // New option
+            System.out.println("7. Logout");
             System.out.print("Choose an option: ");
             
             int choice = scanner.nextInt();
@@ -390,8 +398,34 @@ public class MainApp {
                     Student selectedStudent = students.get(studentChoice - 1);
                     int studId = selectedStudent.getStudentId();
                     
-                    // Get course ID (for simplicity, we'll use a default course ID)
-                    // In a real application, you would have a way to select the course
+                    // Show available courses
+                    System.out.println("\nAvailable Courses:");
+                    try {
+                        Connection connection = DatabaseConnection.getConnection();
+                        String query = "SELECT course_id, course_code, course_name FROM courses";
+                        PreparedStatement preparedStatement = connection.prepareStatement(query);
+                        ResultSet resultSet = preparedStatement.executeQuery();
+                        
+                        boolean hasCourses = false;
+                        while (resultSet.next()) {
+                            hasCourses = true;
+                            int cId = resultSet.getInt("course_id");
+                            String courseCode = resultSet.getString("course_code");
+                            String courseName = resultSet.getString("course_name");
+                            System.out.println(cId + ". " + courseCode + " - " + courseName);
+                        }
+                        
+                        if (!hasCourses) {
+                            System.out.println("No courses available in the database.");
+                        }
+                        
+                        resultSet.close();
+                        preparedStatement.close();
+                        connection.close();
+                    } catch (Exception e) {
+                        System.err.println("Error fetching courses: " + e.getMessage());
+                    }
+                    
                     System.out.print("Enter Course ID: ");
                     int courseID = scanner.nextInt();
                     scanner.nextLine(); // Consume newline
@@ -400,31 +434,98 @@ public class MainApp {
                     String date = java.time.LocalDate.now().toString();
                     System.out.println("Date (auto-generated): " + date);
                     
-                    // Scan QR code
-                    System.out.print("Enter path to QR code image file: ");
-                    String qrCodeImagePath = scanner.nextLine();
+                    // Ask user to choose scanning method
+                    System.out.println("\nSelect QR code scanning method:");
+                    System.out.println("1. Scan from image file");
+                    System.out.println("2. Scan using camera");
+                    System.out.print("Choose an option: ");
                     
-                    try {
-                        // Scan the QR code image
-                        String scannedQRCode = com.qrcode.util.QRCodeScanner.scanQRCode(qrCodeImagePath);
-                        System.out.println("Scanned QR Code: " + scannedQRCode);
+                    int scanMethod = scanner.nextInt();
+                    scanner.nextLine(); // Consume newline
+                    
+                    boolean attendanceMarked = false;
+                    
+                    if (scanMethod == 1) {
+                        // Scan QR code from image file
+                        System.out.print("Enter path to QR code image file: ");
+                        String qrCodeImagePath = scanner.nextLine();
                         
-                        // Verify QR code and mark attendance
-                        if (teacherService.verifyQRCode(studId, scannedQRCode)) {
-                            if (teacherService.markAttendance(studId, courseID, date, scannedQRCode)) {
-                                System.out.println("Attendance marked successfully for " + selectedStudent.getName() + "!");
+                        try {
+                            // Scan the QR code image
+                            String scannedQRCode = com.qrcode.util.QRCodeScanner.scanQRCode(qrCodeImagePath);
+                            System.out.println("Scanned QR Code: " + scannedQRCode);
+                            
+                            // Verify QR code and mark attendance
+                            if (teacherService.verifyQRCode(studId, scannedQRCode)) {
+                                if (teacherService.markAttendance(studId, courseID, date, scannedQRCode)) {
+                                    System.out.println("Attendance marked successfully for " + selectedStudent.getName() + "!");
+                                    attendanceMarked = true;
+                                } else {
+                                    System.out.println("Failed to mark attendance. Please try again.");
+                                }
                             } else {
-                                System.out.println("Failed to mark attendance. Please try again.");
+                                System.out.println("Invalid QR code. Attendance not marked.");
                             }
-                        } else {
-                            System.out.println("Invalid QR code. Attendance not marked.");
+                        } catch (Exception e) {
+                            System.err.println("Error scanning QR code: " + e.getMessage());
+                            System.out.println("Failed to scan QR code. Please try again.");
                         }
-                    } catch (Exception e) {
-                        System.err.println("Error scanning QR code: " + e.getMessage());
-                        System.out.println("Failed to scan QR code. Please try again.");
+                    } else if (scanMethod == 2) {
+                        // Scan QR code using camera
+                        System.out.println("Preparing to scan QR code using camera...");
+                        System.out.println("A window will appear showing your camera feed.");
+                        System.out.println("Position the student's QR code in the frame.");
+                        System.out.println("The system will automatically detect and process the QR code.");
+                        System.out.println("Scanning will timeout after 30 seconds if no QR code is detected.");
+                        System.out.println("You can close the camera window to cancel scanning.");
+                        System.out.println("\nPress Enter to start scanning...");
+                        scanner.nextLine(); // Wait for user to press Enter
+                        
+                        if (teacherService.scanQRCodeAndMarkAttendance(studId, courseID)) {
+                            System.out.println("Attendance marked successfully for " + selectedStudent.getName() + "!");
+                            attendanceMarked = true;
+                        } else {
+                            System.out.println("Failed to mark attendance. Please try again.");
+                        }
+                    } else {
+                        System.out.println("Invalid scanning method selected.");
+                    }
+                    
+                    if (!attendanceMarked) {
+                        System.out.println("Attendance was not marked successfully.");
                     }
                     break;
                 case 6:
+                    // View Available Courses
+                    System.out.println("\n--- Available Courses ---");
+                    try {
+                        Connection conn = DatabaseConnection.getConnection();
+                        String courseQuery = "SELECT course_id, course_code, course_name FROM courses";
+                        PreparedStatement courseStmt = conn.prepareStatement(courseQuery);
+                        ResultSet courseRs = courseStmt.executeQuery();
+                        
+                        if (!courseRs.isBeforeFirst()) {
+                            System.out.println("No courses found in the database.");
+                        } else {
+                            System.out.println("ID\tCode\t\tName");
+                            System.out.println("--\t----\t\t----");
+                            while (courseRs.next()) {
+                                int cId = courseRs.getInt("course_id");
+                                String code = courseRs.getString("course_code");
+                                String name = courseRs.getString("course_name");
+                                System.out.println(cId + "\t" + code + "\t\t" + name);
+                            }
+                        }
+                        
+                        courseRs.close();
+                        courseStmt.close();
+                        conn.close();
+                    } catch (Exception e) {
+                        System.err.println("Error fetching courses: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                    break;
+                case 7:
                     System.out.println("Logging out...");
                     return;
                 default:
@@ -547,6 +648,53 @@ public class MainApp {
                 default:
                     System.out.println("Invalid option. Please try again.");
             }
+        }
+    }
+    
+    private static void addSampleCoursesIfNotExists() {
+        try {
+            Connection connection = DatabaseConnection.getConnection();
+            
+            // Check if courses exist
+            String countQuery = "SELECT COUNT(*) as count FROM courses";
+            PreparedStatement countStmt = connection.prepareStatement(countQuery);
+            ResultSet countRs = countStmt.executeQuery();
+            countRs.next();
+            int courseCount = countRs.getInt("count");
+            countRs.close();
+            countStmt.close();
+            
+            // If no courses exist, add sample courses
+            if (courseCount == 0) {
+                System.out.println("Adding sample courses to the database...");
+                
+                String insertQuery = "INSERT INTO courses (course_code, course_name, credits, department) VALUES (?, ?, ?, ?)";
+                PreparedStatement insertStmt = connection.prepareStatement(insertQuery);
+                
+                // Add sample courses
+                String[][] sampleCourses = {
+                    {"CS101", "Introduction to Computer Science", "3", "Computer Science"},
+                    {"MATH101", "Calculus I", "4", "Mathematics"},
+                    {"ENG101", "English Composition", "3", "English"},
+                    {"PHYS101", "General Physics I", "4", "Physics"}
+                };
+                
+                for (String[] course : sampleCourses) {
+                    insertStmt.setString(1, course[0]); // course_code
+                    insertStmt.setString(2, course[1]); // course_name
+                    insertStmt.setString(3, course[2]); // credits
+                    insertStmt.setString(4, course[3]); // department
+                    insertStmt.executeUpdate();
+                }
+                
+                insertStmt.close();
+                System.out.println("Sample courses added successfully!");
+            }
+            
+            connection.close();
+        } catch (Exception e) {
+            System.err.println("Error adding sample courses: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }

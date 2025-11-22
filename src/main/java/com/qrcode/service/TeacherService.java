@@ -6,6 +6,7 @@ import com.qrcode.model.Course;
 import com.qrcode.model.InternalResult;
 import com.qrcode.model.FinalResult;
 import com.qrcode.util.DatabaseConnection;
+import com.qrcode.util.CameraQRCodeScanner;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -297,13 +298,32 @@ public class TeacherService {
      * @return true if successful, false otherwise
      */
     public boolean markAttendance(int studentId, int courseId, String date, String qrCode) {
-        // In a real application, you would verify the QR code and save to database
-        // For now, we'll just simulate the process
-        System.out.println("Attendance marked for student ID: " + studentId + 
-                          " in course ID: " + courseId + 
-                          " on date: " + date + 
-                          " using QR code: " + qrCode);
-        return true;
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        
+        try {
+            connection = DatabaseConnection.getConnection();
+            String query = "INSERT INTO attendance (student_id, course_id, date, status, qr_code_used) VALUES (?, ?, ?, 'present', ?)";
+            preparedStatement = connection.prepareStatement(query);
+            preparedStatement.setInt(1, studentId);
+            preparedStatement.setInt(2, courseId);
+            preparedStatement.setString(3, date);
+            preparedStatement.setString(4, qrCode);
+            
+            int rowsAffected = preparedStatement.executeUpdate();
+            return rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error marking attendance: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        } finally {
+            // Close resources
+            try {
+                if (preparedStatement != null) preparedStatement.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
     }
     
     /**
@@ -313,9 +333,89 @@ public class TeacherService {
      * @return true if valid, false otherwise
      */
     public boolean verifyQRCode(int studentId, String qrCode) {
-        // In a real application, you would check the QR code against the database
-        // For now, we'll just simulate the process
-        System.out.println("Verifying QR code for student ID: " + studentId);
-        return qrCode != null && !qrCode.isEmpty(); // Simple validation
+        Connection connection = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        
+        try {
+            connection = DatabaseConnection.getConnection();
+            String query = "SELECT roll_number FROM students WHERE student_id = ?";
+            preparedStatement = connection.prepareStatement(query);
+            preparedStatement.setInt(1, studentId);
+            
+            resultSet = preparedStatement.executeQuery();
+            
+            if (resultSet.next()) {
+                String rollNumber = resultSet.getString("roll_number");
+                // Use the proper validation method that checks the prefix
+                return com.qrcode.util.QRCodeScanner.validateStudentQRCode(qrCode, studentId, rollNumber);
+            } else {
+                System.out.println("DEBUG: No student found with ID " + studentId);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error verifying QR code: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            // Close resources
+            try {
+                if (resultSet != null) resultSet.close();
+                if (preparedStatement != null) preparedStatement.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Scan QR code using camera and mark attendance
+     * @param studentId The student ID
+     * @param courseId The course ID
+     * @return true if attendance was marked successfully, false otherwise
+     */
+    public boolean scanQRCodeAndMarkAttendance(int studentId, int courseId) {
+        CameraQRCodeScanner scanner = new CameraQRCodeScanner();
+        
+        try {
+            // Check if camera is available
+            if (!CameraQRCodeScanner.isCameraAvailable()) {
+                System.err.println("No camera available for QR code scanning");
+                return false;
+            }
+            
+            // Initialize camera
+            scanner.initializeCamera();
+            
+            System.out.println("Camera initialized. A window will appear showing the camera feed.");
+            System.out.println("Position the student's QR code in the frame and wait for detection.");
+            System.out.println("The scanning will timeout after 30 seconds if no QR code is detected.");
+            
+            // Scan QR code from camera (timeout after 30 seconds)
+            String scannedQRCode = scanner.scanQRCodeFromCamera(30);
+            
+            if (scannedQRCode != null) {
+                // Get current date
+                String date = java.time.LocalDate.now().toString();
+                
+                // Verify QR code and mark attendance
+                if (verifyQRCode(studentId, scannedQRCode)) {
+                    return markAttendance(studentId, courseId, date, scannedQRCode);
+                } else {
+                    System.err.println("Invalid QR code for student ID: " + studentId);
+                    return false;
+                }
+            } else {
+                System.err.println("No QR code detected within timeout period");
+                return false;
+            }
+        } catch (Exception e) {
+            System.err.println("Error during camera-based QR code scanning: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        } finally {
+            // Close camera
+            scanner.closeCamera();
+        }
     }
 }

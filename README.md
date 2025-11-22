@@ -15,7 +15,7 @@ A comprehensive college management system with separate modules for administrato
 - Add internal exam results
 - Add final results
 - Manage student information
-- Mark student attendance using QR codes
+- Mark student attendance using QR codes (both file-based and camera-based scanning)
 
 ### Student Module
 - View final results
@@ -58,7 +58,9 @@ Each student is automatically assigned a unique QR code during registration. Thi
 
 1. Students can view their QR code in the student dashboard
 2. Students can download their QR code as a PNG image
-3. Teachers can scan or manually enter the QR code to mark attendance
+3. Teachers can scan the QR code in two ways:
+   - File-based scanning: Upload an image of the QR code
+   - Camera-based scanning: Use the device's webcam to scan the QR code in real-time
 4. Attendance records are stored in the database with timestamps
 
 ## Default Login Credentials
@@ -74,3 +76,4 @@ Each student is automatically assigned a unique QR code during registration. Thi
 - JDBC
 - Maven
 - ZXing QR Code Library
+- Webcam Capture Library
